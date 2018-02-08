@@ -13,3 +13,4 @@ RUN mkdir -p /app
 WORKDIR /app
 EXPOSE 80
 CMD ["bash"]
+ADD crawler /app/

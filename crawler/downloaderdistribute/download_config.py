@@ -14,7 +14,7 @@ class MdConfig(object):
         env_idc = os.environ
         # redis config
         self.rds_host = env_idc.get('redis_host')
-        self.rds_port = env_idc.getint('redis_port')
+        self.rds_port = int(env_idc.get('redis_port'))
         self.rds_password = env_idc.get('redis_password')
         self.rds = redis.Redis(host=self.rds_host, port=self.rds_port, db=0, password=self.rds_password,
                                decode_responses=True)
@@ -28,7 +28,7 @@ class MdConfig(object):
         self.proxy_key = env_idc.get('download_proxy_key')
         self.proxy_index = env_idc.get('download_proxy_index')
         self.lock_sesseion_sec = env_idc.get('download_lock_sesseion_sec')
-        self.time_out = env_idc.getint('download_time_out')
+        self.time_out = int(env_idc.get('download_time_out'))
 
         # proxy config
         self.proxy_host = self.rds.hget(self.proxy_key, 'host')
@@ -39,7 +39,7 @@ class MdConfig(object):
 
         # mysql config
         self.my_host = env_idc.get('mysql_host')
-        self.my_port = env_idc.getint('mysql_port')
+        self.my_port = int(env_idc.get('mysql_port'))
         self.my_user = env_idc.get('mysql_user')
         self.my_password = env_idc.get('mysql_password')
         self.my_db = env_idc.get('mysql_db')

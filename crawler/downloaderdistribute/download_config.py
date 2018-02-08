@@ -5,6 +5,7 @@ import redis
 import logging
 import logging.config
 import unittest
+from redis.sentinel import Sentinel
 
 from download_mysql import DbMysql
 
@@ -12,13 +13,13 @@ from download_mysql import DbMysql
 class MdConfig(object):
     def __init__(self):
         env_idc = os.environ
+
+        logging.info('env:{0}'.format(env_idc))
         # redis config
-        self.rds_host = env_idc.get('redis_host')
-        self.rds_port = int(env_idc.get('redis_port'))
-        self.rds_password = env_idc.get('redis_password')
-        self.rds = redis.Redis(host=self.rds_host, port=self.rds_port, db=0, password=self.rds_password,
-                               decode_responses=True)
-        logging.info('redis host[{0}] port[{1}]'.format(self.rds_host, self.rds_port))
+        sentinel = Sentinel(
+            env_idc.get('redis_sentinels').split(','),
+            socket_timeout=0.1)
+        self.rds = sentinel.master_for(env_idc.get('redis_master'), socket_timeout=0.1, password=env_idc.get('redis_password'))
 
         # stop key
         self.run_seqs = env_idc.get('download_run_seqs')

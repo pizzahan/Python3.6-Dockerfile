@@ -14,7 +14,6 @@ from download_thread import MdThread
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', help='配置文件', default='conf/downloader.conf')
     parser.add_argument('--logging', help='日志配置', default='conf/logging.conf')
     args = parser.parse_args()
 
@@ -22,7 +21,7 @@ def main():
         os.makedirs('log', exist_ok=True)
         logging.config.fileConfig(args.logging)
 
-    config = MdConfig(args.config)
+    config = MdConfig()
     abu_thread = MdThread(config)
     abu_thread.run()
     abu_thread.join()

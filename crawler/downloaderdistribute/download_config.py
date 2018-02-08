@@ -16,8 +16,12 @@ class MdConfig(object):
 
         logging.info('env:{0}'.format(env_idc))
         # redis config
-        sentinel = Sentinel(
-            env_idc.get('redis_sentinels').split(','),
+        sentinel_hosts=env_idc.get('sentinel_hosts').split(',')
+        sentinel_ports=env_idc.get('sentinel_ports').split(',')
+        sentinel_list = []
+        for i in range(len(sentinel_hosts)):
+            sentinel_list.append( (sentinel_hosts[i],sentinel_ports[i]) )
+        sentinel = Sentinel(sentinel_list,
             socket_timeout=0.1)
         self.rds = sentinel.master_for(env_idc.get('redis_master'), socket_timeout=0.1, password=env_idc.get('redis_password'))
 

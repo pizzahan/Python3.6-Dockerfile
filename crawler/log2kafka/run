@@ -1,0 +1,4 @@
+#!/bin/bash
+killall log2kafka
+nohup ./supervise.log2kafka ./&
+nohup python3 ./log2kafka

@@ -119,7 +119,7 @@ class MdHandler(object):
         session = self.sessions[cur_index]
         try:
             queue = tasks['notify']
-            status_code = session.download(tasks['url'], tasks['file'], tasks['params'])
+            status_code = session.download(tasks['trans_type'], tasks['url'], tasks['file'], tasks['params'], tasks['data'])
             if status_code == 200:
                 logging.info('download {0} into {1}'.format(tasks['url'], tasks['file']))
                 tasks['type'] = queue

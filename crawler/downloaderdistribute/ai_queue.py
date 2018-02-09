@@ -44,10 +44,8 @@ class RdsQueue(AIQueue):
             try:
                 self.rds = redis.Redis(host=self.host, port=self.port, db=self.db, password=self.password,
                                        decode_responses=True)
-                result = self.rds.ping()
-                msg = '{0}'.format(result)
-                if result != 'PONG':
-                    res = False
+                res = self.rds.ping()
+                msg = '{0}'.format(res)
             except Exception as e:
                 msg = '{0}'.format(e)
                 res = False
@@ -73,10 +71,10 @@ class RdsQueue(AIQueue):
         except Exception as e:
             msg = '{0}'.format(e)
             res = False
-        return res,msg
+        return res, msg
 
     def Close(self):
-        return True,''
+        return True, ''
 
 
 class KafkaQueue(AIQueue):

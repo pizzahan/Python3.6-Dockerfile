@@ -5,6 +5,7 @@ import random
 import urllib3
 import requests
 from requests import exceptions
+from ai_output import *
 
 import logging
 import traceback
@@ -35,25 +36,91 @@ class RequestSession(object):
         self.password = password
         self.agent = UserAgent()
 
-    def download(self, url, out_file, params):
-        status, response = self.get_url(url, params)
-        if 200 == status:
-            if len(response.text) > 0:
-                check_path(out_file)
-                if response.apparent_encoding != 'utf-8':
-                    content = response.content.decode(response.apparent_encoding, 'replace')
-                elif response.encoding != 'utf-8':
-                    content = response.content.decode('utf-8')
+    def download(self, trans_type, url, out_file, params, data):
+        fp = OFile(out_file, 'w', encoding='utf-8')
+        if trans_type == 'get':
+            status, response = self.get_url(url, params)
+            if 200 == status:
+                if len(response.text) > 0:
+                    check_path(out_file)
+                    if response.apparent_encoding != 'utf-8':
+                        content = response.content.decode(response.apparent_encoding, 'replace')
+                    elif response.encoding != 'utf-8':
+                        content = response.content.decode('utf-8')
+                    else:
+                        content = response.text
+                    fp.write('', content)
                 else:
-                    content = response.text
-                with open(out_file, 'w', encoding='utf-8') as fp:
-                    fp.write(content)
+                    logging.warning('url[{0}] response [{1}]'.format(url, response.text))
+                    return -1
+            elif response is not None:
+                logging.error('request {0} return status {1}'.format(url, response.status_code))
+            return status
+        elif trans_type == 'post':
+            status, response = self.post_url(url, data, params)
+            if 200 == status:
+                if len(response.text) > 0:
+                    check_path(out_file)
+                    if response.apparent_encoding != 'utf-8':
+                        content = response.content.decode(response.apparent_encoding, 'replace')
+                    elif response.encoding != 'utf-8':
+                        content = response.content.decode('utf-8')
+                    else:
+                        content = response.text
+                    fp.write('', content)
+                else:
+                    logging.warning('url[{0}] response [{1}]'.format(url, response.text))
+                    return -1
+            elif response is not None:
+                logging.error('request {0} return status {1}'.format(url, response.status_code))
+            return status
+
+    def post_url(self, url, data, params=None):
+        response = None
+        timeout_flag = False
+        self.headers['User-Agent'] = self.agent.get_agent()
+        self.headers['Connection'] = 'close'
+        try:
+            if self.session is not None:
+                if self.proxies is not None:
+                    response = self.session.post(url, headers=self.headers, params=params, proxies=self.proxies, data=data)
+                else:
+                    response = self.session.get(url, headers=self.headers, params=params, data=data)
             else:
-                logging.warning('url[{0}] response [{1}]'.format(url, response.text))
-                return -1
-        elif response is not None:
-            logging.error('request {0} return status {1}'.format(url, response.status_code))
-        return status
+                response = requests.get(url, headers=self.headers, params=params, proxies=self.proxies,
+                                        timeout=self.time_out, data=data)
+        except urllib3.exceptions.ProxyError:
+            timeout_flag = True
+        except exceptions.ProxyError:
+            timeout_flag = True
+        except exceptions.ReadTimeout:
+            timeout_flag = True
+        except Exception as e:
+            logging.error(e)
+            logging.error(traceback.format_exc())
+            return -1, None
+
+        # 针对超时的再次请求一次
+        if timeout_flag:
+            try:
+                if self.session is not None:
+                    if self.proxies is not None:
+                        response = self.session.get(url, headers=self.headers, params=params, proxies=self.proxies)
+                    else:
+                        response = self.session.get(url, headers=self.headers, params=params)
+                else:
+                    response = requests.get(url, headers=self.headers, params=params, proxies=self.proxies, timeout=5)
+            except urllib3.exceptions.ProxyError:
+                return -2, None
+            except exceptions.ProxyError:
+                return -2, None
+            except exceptions.ReadTimeout:
+                return -2, None
+            except Exception as e:
+                logging.error(e)
+                logging.error(traceback.format_exc())
+                return -1, None
+        return response.status_code, response
 
     def get_url(self, url, params=None):
         response = None

@@ -12,24 +12,20 @@ class AIOStream(object):
     def open(self):
         pass
 
-    def read(self):
-        pass
-
-    def write(self, message):
+    def write(self, key, message):
         pass
 
     def close(self):
         pass
 
 
-class OQueue(AIOStream):
-    def __init__(self, queue_type, in_key, host, port, db, password=None, retries=3, username=None, group=None):
+class IOQueue(AIOStream):
+    def __init__(self, queue_type, host, port, db, password=None, retries=3, username=None, group=None):
         super().__init__()
         if queue_type == 'redis':
             self.queue = RdsQueue(host=host, port=port, db=db, password=password)
         elif queue_type == 'kafka':
             self.queue = KafkaQueue(host=host, retries=retries, username=username, password=password, group=group)
-        self.key = in_key
 
     def open(self):
         res = True
@@ -41,24 +37,21 @@ class OQueue(AIOStream):
             res = False
         return res, msg
 
-    def read(self):
+    def read(self, key):
         res = True
         msg = ''
         try:
-            result = self.queue.Lpop(self.key)
-            msg = '{0}'.format(result)
-            if int(result) != 1:
-                res = False
+            res, msg = self.queue.Lpop(key)
         except Exception as e:
             msg = '{0}'.format(e)
             res = False
         return res, msg
 
-    def write(self, message):
+    def write(self, key, message):
         res = True
         msg = ''
         try:
-            res, msg = self.queue.Rpush(self.key, message)
+            res, msg = self.queue.Rpush(key, message)
         except Exception as e:
             msg = '{0}'.format(e)
             res = False
@@ -97,17 +90,18 @@ class OFile(AIOStream):
             res = False
         return res, msg
 
-    def write(self, message):
+    def write(self, key, message):
         res = True
         msg = ''
         try:
             if len(message) > 0:
                 message = message.strip()
-                self.fb.write(message)
+                self.fb.write(key + message)
         except Exception as e:
             msg = '{0}'.format(e)
             res = False
         return res, msg
+
     def close(self):
         res = True
         msg = ''
@@ -118,6 +112,7 @@ class OFile(AIOStream):
             res = False
         return res, msg
 
+
 class TestOFile(unittest.TestCase):
     def test_OFile(self):
         filename = 'D:/workspace/mindata/workdiary/tmp/test_output.txt'
@@ -126,11 +121,12 @@ class TestOFile(unittest.TestCase):
         message = '万里长城今犹在，'
         ofiler = OFile(filename=filename, mode=mode, encoding='utf-8')
         ofiler.open()
-        ofiler.write(message)
+        ofiler.write('test', message)
         ofiler.close()
 
-class TestOQueue(unittest.TestCase):
-    def test_OQueue(self):
+
+class TestIOQueue(unittest.TestCase):
+    def test_IOQueue(self):
         queue_type = 'redis'
         in_key = 'tmp_key'
         host = '192.168.1.205'
@@ -142,12 +138,17 @@ class TestOQueue(unittest.TestCase):
         group = None
         message = '万里长城今犹在，'
         try:
-            oqueuer = OQueue(queue_type, in_key, host, port, db, password=password, retries=retries, username=username, group=group)
-            ret_code,ret_msg = oqueuer.open()
+            oqueuer = IOQueue(queue_type, host, port, db, password=password, retries=retries, username=username,
+                              group=group)
+            ret_code, ret_msg = oqueuer.open()
             if not ret_code:
                 print(ret_msg)
                 return
-            ret_code, ret_msg = oqueuer.write(message)
+            ret_code, ret_msg = oqueuer.write(in_key, message)
+            if not ret_code:
+                print(ret_msg)
+                return
+            ret_code, ret_msg = oqueuer.read(in_key)
             if not ret_code:
                 print(ret_msg)
                 return

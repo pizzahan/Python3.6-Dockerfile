@@ -17,4 +17,4 @@ ADD crawler /app/
 RUN pip3.6 install redis
 RUN pip3.6 install pymysql
 RUN pip3.6 install requests
-
+RUN pip3.6 install kafka-python

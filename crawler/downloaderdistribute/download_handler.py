@@ -25,6 +25,7 @@ class MdHandler(object):
         # 不变可共用的
         self.proxy = abu_proxy.get_proxy()
         self.rds = self.config.get_rds()
+        self.ioqueuer = self.config.get_ioqueuer()
         self.mdb = DbMysql(self.config.my_host, self.config.my_port, self.config.my_user, self.config.my_password,
                            self.config.my_db)
         # 变化的
@@ -107,8 +108,8 @@ class MdHandler(object):
             if status_code == 404:
                 logging.warning('url {0} 404 page not found'.format(url))
                 return 404
-            resp = self.rds.rpush(task['except'], task_str)
-            if resp is None:
+            ret_code,ret_msg = self.ioqueuer.write(task['except'], task_str)
+            if not ret_code:
                 logging.warning('rpush queue[{0}][{1}] unexpect response'.format(task['except'], task))
             logging.error('download {0} failed[{1}]'.format(url, file_name))
             return -1
@@ -130,8 +131,8 @@ class MdHandler(object):
                     self.sessions[cur_index] = sess
             if queue is not None and len(queue) > 0:
                 content = json.dumps(tasks)
-                length, msg = push(self.rds, queue, content)
-                if length <= 0:
+                ret_code, ret_msg = self.ioqueuer.write(queue, content)
+                if not ret_code:
                     logging.error('push queue[{0}] failed[{1}], content[{2}]'.format(queue, msg, content))
         except Exception as e:
             logging.error(e)

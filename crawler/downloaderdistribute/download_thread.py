@@ -35,6 +35,7 @@ class MdThread(object):
 
     # 处理线程 读取任务 获取url并进行下载, 下载后通知解析处理
     def deal(self, task_queue):
+        ioqueuer = self.config.get_ioqueuer()
         rds_cli = self.config.get_rds()
         handler = self.handlers[task_queue]
         while True:
@@ -47,7 +48,7 @@ class MdThread(object):
                         logging.info('{0} get stop_download event'.format(task_queue))
                         break
                 # 获取任务
-                task_str = rds_cli.lpop(task_queue)
+                task_str = ioqueuer.lpop(task_queue)
                 if task_str is None:
                     time.sleep(1)
                     continue
@@ -117,7 +118,7 @@ class TestMdThread(unittest.TestCase):
         log_conf = './conf/logging.conf'
         logging.config.fileConfig(log_conf)
 
-        abu_config = MdConfig(conf_file)
+        abu_config = MdConfig()
         rds = abu_config.get_rds()
         print(rds.ping())
 

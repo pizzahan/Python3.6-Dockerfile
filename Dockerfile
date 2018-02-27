@@ -13,7 +13,7 @@ RUN mkdir -p /app
 WORKDIR /app
 EXPOSE 80
 CMD ["bash"]
-ADD crawler /app/
+ADD downloaderdistribute /app/
 RUN pip3.6 install redis
 RUN pip3.6 install pymysql
 RUN pip3.6 install requests

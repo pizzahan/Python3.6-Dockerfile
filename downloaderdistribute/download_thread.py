@@ -35,7 +35,9 @@ class MdThread(object):
 
     # 处理线程 读取任务 获取url并进行下载, 下载后通知解析处理
     def deal(self, task_queue):
-        ioqueuer = self.config.get_ioqueuer()
+        scrapy_queue = self.config.get_queuer(self.config.input_flag)
+        outputer = self.config.get_storer(self.config.output_flag)
+
         rds_cli = self.config.get_rds()
         handler = self.handlers[task_queue]
         while True:
@@ -48,12 +50,12 @@ class MdThread(object):
                         logging.info('{0} get stop_download event'.format(task_queue))
                         break
                 # 获取任务
-                task_str = ioqueuer.lpop(task_queue)
-                if task_str is None:
+                retflag, task_str = scrapy_queue.read(task_queue)
+                if task_str == 'None' or not task_str:
                     time.sleep(1)
                     continue
                 incr(rds_cli, self.config.stat_hash, task_queue, 'request')
-                status_code = handler.dealing(task_str)
+                status_code = handler.dealing(task_str, scrapy_queue, outputer)
                 if status_code != 0:
                     if status_code == 1:
                         incr(rds_cli, self.config.stat_hash, task_queue, 'exists')
@@ -114,7 +116,6 @@ class MdThread(object):
 
 class TestMdThread(unittest.TestCase):
     def test_run(self):
-        conf_file = './conf/downloader.conf'
         log_conf = './conf/logging.conf'
         logging.config.fileConfig(log_conf)
 

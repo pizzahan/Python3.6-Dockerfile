@@ -8,8 +8,9 @@ import time
 import logging
 import traceback
 from download_class import AbuProxy, UserAgent, RequestSession
-from download_public import bkdr_hash, push, random_str
+from download_public import bkdr_hash, random_str
 from download_mysql import DbMysql
+from download_public import check_path
 
 
 class MdHandler(object):
@@ -62,7 +63,7 @@ class MdHandler(object):
     # 先尝试加锁
     def reget_session(self, account, password):
         sess = ''
-        if account !='default':
+        if account != 'default':
             lock_key = 'lock_{0}_{1}_session'.format(self.task, account)
             resp = self.rds.set(lock_key, '1', ex=self.config.lock_sesseion_sec, nx=True)
             if resp is not None:
@@ -71,11 +72,11 @@ class MdHandler(object):
             sess = self.get_session(account, password)
         return sess
 
-    def dealing(self, task_str):
+    def dealing(self, task_str, scrapy_queue, outstream):
         task_info_list = self.task_infos[self.task]
-        jsons = json.loads(task_str)
-        url = jsons['url']
-        params = jsons.get('params', {})
+        task = json.loads(task_str)
+        url = task['url']
+        params = task.get('params', {})
         if params is None:
             params = {}
         bkdr = bkdr_hash('{0}{1}'.format(url, params))
@@ -85,43 +86,54 @@ class MdHandler(object):
             defalut_file = '{0}/{1}/{2}/{3}.html'.format(self.config.data_path, self.task, time_path, bkdr)
         else:
             defalut_file = '{0}/{1}/{2}.html'.format(self.config.data_path, self.task, bkdr)
-        file_name = jsons.get('file', defalut_file)
+        file_name = task.get('file', defalut_file)
         # 非retry任务需要去重
-        if 'retry' not in jsons:
-            if os.path.exists(file_name):
+        if 'retry' not in task:
+            # 输出文件是才需要用文件排重，其他方式不可以排重
+            if self.config.output_flag == 'file' and os.path.exists(file_name):
                 if os.stat(file_name).st_size > task_info_list[5]:
                     return 1
         # 执行任务
-        task = {'url': url, 'file': file_name}
+        task['file'] = file_name
         if len(params) != 0:
             task['params'] = params
         else:
             task['params'] = None
         task['except'] = task_info_list[2]
         task['notify'] = task_info_list[3]
-        task['type'] = jsons.get('type', self.task)
-        task['extra'] = jsons.get('extra', {})
-        task['retry'] = jsons.get('retry', 0)
-        status_code = self.get_content(task)
+        task['type'] = task.get('type', self.task)
+        task['extra'] = task.get('extra', {})
+        task['retry'] = task.get('retry', 0)
+        status_code = self.get_content(task, scrapy_queue, outstream)
         if status_code != 200:
             if status_code == 404:
                 logging.warning('url {0} 404 page not found'.format(url))
                 return 404
-            resp = self.rds.rpush(task['except'], task_str)
-            if resp is None:
+            ret_code, ret_msg = scrapy_queue.write(task['except'], task_str)
+            if not ret_code:
                 logging.warning('rpush queue[{0}][{1}] unexpect response'.format(task['except'], task))
             logging.error('download {0} failed[{1}]'.format(url, file_name))
             return -1
         return 0
 
-    def get_content(self, tasks):
+    def get_content(self, tasks, scrapy_queue, outstream):
         cur_index = self.rds.incr(self.config.proxy_index, 1) % len(self.sessions)
         session = self.sessions[cur_index]
         try:
             queue = tasks['notify']
-            status_code = session.download(tasks['url'], tasks['file'], tasks['params'])
+            status_code, content = session.download(tasks)
             if status_code == 200:
                 logging.info('download {0} into {1}'.format(tasks['url'], tasks['file']))
+
+                check_path(tasks['file'])
+                res, msg = outstream.write(tasks['file'], content)
+                if res:
+                    if self.config.output_flag == 'file':
+                        res, msg = outstream.close()
+                        if not res:
+                            logging.error('outseteam close error :{0}'.format(msg))
+                else:
+                    logging.error('outseteam write error :{0}'.format(msg))
                 tasks['type'] = queue
             else:
                 queue = tasks['except']
@@ -130,9 +142,9 @@ class MdHandler(object):
                     self.sessions[cur_index] = sess
             if queue is not None and len(queue) > 0:
                 content = json.dumps(tasks)
-                length, msg = push(self.rds, queue, content)
-                if length <= 0:
-                    logging.error('push queue[{0}] failed[{1}], content[{2}]'.format(queue, msg, content))
+                ret_code, ret_msg = scrapy_queue.write(queue, content)
+                if not ret_code:
+                    logging.error('push queue[{0}] failed[{1}], content[{2}]'.format(queue, ret_msg, content))
         except Exception as e:
             logging.error(e)
             logging.error(traceback.format_exc())

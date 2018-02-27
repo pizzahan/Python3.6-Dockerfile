@@ -66,15 +66,15 @@ class DbMysql(object):
 
     def query(self, sql):
         rows = []
-        with self.my_conn.cursor() as cursor:
-            try:
-                cursor.execute(sql)
-                rows = cursor.fetchall()
-            except Exception as e:
-                if e.args[0] != "(0, '')":
-                    logging.error(e)
-                    logging.error(sql)
-                    logging.error(traceback.format_exc())
+        cursor = self.my_conn.cursor()
+        try:
+            cursor.execute(sql)
+            rows = cursor.fetchall()
+        except Exception as e:
+            if e.args[0] != "(0, '')":
+                logging.error(e)
+                logging.error(sql)
+                logging.error(traceback.format_exc())
         return rows
 
     def commit(self):

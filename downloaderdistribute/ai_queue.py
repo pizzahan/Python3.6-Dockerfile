@@ -78,7 +78,7 @@ class RdsQueue(AIQueue):
 
 
 class KafkaQueue(AIQueue):
-    def __init__(self, host='localhost:9092', retries=3, username=None, password=None, group=None):
+    def __init__(self, host='192.168.1.205:9092,192.168.1.206:9092,192.168.1.207:9092', retries=3, username=None, password=None, group=None):
         super().__init__()
         self.hosts = host.split(',')
         self.username = username
@@ -111,7 +111,7 @@ class KafkaQueue(AIQueue):
         res = True
         msg = ''
         try:
-            result = self.producer.send(queue, value=message)
+            result = self.producer.send(queue, value=message.encode('utf-8'))
         except Exception as e:
             print(traceback.format_exc())
             msg = '{0}'.format(e)
@@ -127,7 +127,6 @@ class KafkaQueue(AIQueue):
                 sasl_plain_username=self.username,
                 sasl_plain_password=self.password,
             )
-            consumer.close()
             self.consumers[queue] = consumer
         try:
             for message in self.consumers[queue]:
@@ -141,7 +140,8 @@ class KafkaQueue(AIQueue):
         if queue not in self.yields.keys():
             self.yields[queue] = self.getYieldMsg(queue)
         try:
-            msg = self.yields[queue].__next__()
+            msg = self.yields[queue].__next__().value.decode('utf-8')
+            self.consumers[queue].commit()
         except Exception as e:
             msg = '{0}'.format(e)
             self.yields[queue] = self.getYieldMsg(queue)
@@ -149,14 +149,14 @@ class KafkaQueue(AIQueue):
         return res, msg
 
     def Close(self):
-        self.producer.close()
+        if self.producer:
+            self.producer.close()
         for queue in self.consumers.keys():
             self.consumers[queue].close()
 
-
 class TestRdsQueue(unittest.TestCase):
     def test_rds(self):
-        host = '127.0.0.1'
+        host = '192.168.1.205:9092'
         port = 21601
         password = 'Mindata123'
         db = 0
@@ -182,16 +182,18 @@ class TestKafkaQueue(unittest.TestCase):
         if not res:
             print('kafka connect failed, [{0}]'.format(msg))
             sys.exit(-1)
-        res, msg = kfk.Rpush('TestKafkaQueue', 'hello, this is a TestRdsQueue msg')
+        res, msg = kfk.Rpush('strategy-push', 'hello, this is a TestRdsQueue msg')
         if msg != '':
             print('kafka Rpush failed, [{0}]'.format(msg))
             sys.exit(-1)
         else:
             print('kafka Rpush ok, [{0}]'.format(res))
-        res = kfk.Lpop('TestRdsQueue')
-        print('kafka Lpop [{0}]'.format(res))
-        time.sleep(10)
-        kfk.Close()
+        res, msg = kfk.Lpop('strategy-push')
+        print('kafka Lpop [{0}]'.format(msg))
+        try:
+            kfk.Close()
+        except Exception as e:
+            print(e)
 
 
 if __name__ == '__main__':

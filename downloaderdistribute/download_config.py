@@ -13,7 +13,7 @@ class MdConfig(object):
     def __init__(self):
         env_dic = os.environ
 
-        logging.info('env:{0}'.format(env_dic))
+        logging.error('env:{0}'.format(env_dic))
         # redis config
         '''
         sentinel_hosts=env_dic.get('sentinel_hosts').split(',')

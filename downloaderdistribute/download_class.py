@@ -51,7 +51,7 @@ class RequestSession(object):
                         content = response.text
                 else:
                     logging.warning('url[{0}] response [{1}]'.format(url, response.text))
-                    return -1
+                    return -1, ''
             elif response is not None:
                 logging.error('request {0} return status {1}'.format(url, response.status_code))
             return status, content
@@ -67,7 +67,7 @@ class RequestSession(object):
                         content = response.text
                 else:
                     logging.warning('url[{0}] response [{1}]'.format(url, response.text))
-                    return -1
+                    return -1, ''
             elif response is not None:
                 logging.error('request {0} return status {1}'.format(url, response.status_code))
             return status, content

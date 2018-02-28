@@ -19,14 +19,13 @@ def main():
     if args.logging:
         os.makedirs('log', exist_ok=True)
         logging.config.fileConfig(args.logging)
-    config = None
     try:
         config = MdConfig()
+        abu_thread = MdThread(config)
+        abu_thread.run()
+        abu_thread.join()
     except Exception as e:
         logging.error(e)
-    abu_thread = MdThread(config)
-    abu_thread.run()
-    abu_thread.join()
     logging.info('downloader exit.')
 
 

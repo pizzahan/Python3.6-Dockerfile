@@ -18,7 +18,7 @@ RUN pip3.6 install redis
 RUN pip3.6 install pymysql
 RUN pip3.6 install requests
 RUN pip3.6 install kafka-python
-ENTRYPOINT ["python3.6","/app/gain_downloader_main.py"]
+#ENTRYPOINT ["python3.6","/app/gain_downloader_main.py"]
 #RUN python3.6 /app/gain_downloader_main.py 
 #解决中文文件名报错问题 UnicodeEncodeError: 'ascii' codec can't encode characters in position 0-3
 #RUN export LANG=en_US.UTF-8

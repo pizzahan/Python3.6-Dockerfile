@@ -19,6 +19,7 @@ def main():
     if args.logging:
         os.makedirs('log', exist_ok=True)
         logging.config.fileConfig(args.logging)
+    config = None
     try:
         config = MdConfig()
     except Exception as e:

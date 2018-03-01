@@ -59,11 +59,12 @@ class MdConfig(object):
         self.time_out = int(env_dic.get('download_time_out', '3'))
 
         # proxy config
-        self.rds = self.get_rds()
-        self.proxy_host = self.rds.hget(self.proxy_key, 'host')
-        self.proxy_port = self.rds.hget(self.proxy_key, 'port')
-        self.proxy_user = self.rds.hget(self.proxy_key, 'user')
-        self.proxy_password = self.rds.hget(self.proxy_key, 'password')
+        if self.redis_host:
+            self.rds = self.get_rds()
+            self.proxy_host = self.rds.hget(self.proxy_key, 'host')
+            self.proxy_port = self.rds.hget(self.proxy_key, 'port')
+            self.proxy_user = self.rds.hget(self.proxy_key, 'user')
+            self.proxy_password = self.rds.hget(self.proxy_key, 'password')
 
         # mysql config
         self.my_host = env_dic.get('mysql_host')
@@ -71,7 +72,8 @@ class MdConfig(object):
         self.my_user = env_dic.get('mysql_user')
         self.my_password = env_dic.get('mysql_password')
         self.my_db = env_dic.get('mysql_db')
-        self.mdb = DbMysql(self.my_host, self.my_port, self.my_user, self.my_password, self.my_db)
+        if self.my_host:
+            self.mdb = DbMysql(self.my_host, self.my_port, self.my_user, self.my_password, self.my_db)
         logging.info('mysql host[{0}] port[{1}]'.format(self.my_host, self.my_port))
 
         # 输入输出类型
